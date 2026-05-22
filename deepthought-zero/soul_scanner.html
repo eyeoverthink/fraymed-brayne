@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRAYMUS Soul Scanner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a; color: #e0e0e0; font-family: 'Courier New', monospace;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    padding: 20px;
+  }
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 {
+    font-size: 1.8em; color: #c9a227; letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(201, 162, 39, 0.4);
+  }
+  .header .subtitle { color: #666; font-size: 0.85em; margin-top: 6px; }
+
+  .tabs {
+    display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #333;
+  }
+  .tab {
+    padding: 10px 24px; cursor: pointer; color: #888; border: 1px solid #333;
+    border-bottom: none; background: #111; font-family: inherit; font-size: 0.9em;
+    transition: all 0.2s;
+  }
+  .tab:first-child { border-radius: 6px 0 0 0; }
+  .tab:last-child { border-radius: 0 6px 0 0; }
+  .tab.active { color: #c9a227; background: #1a1a1a; border-color: #c9a227; }
+  .tab:hover { color: #c9a227; }
+
+  .panel { display: none; width: 100%; max-width: 700px; }
+  .panel.active { display: block; }
+
+  #camera-panel video {
+    width: 100%; max-width: 500px; border-radius: 8px;
+    border: 2px solid #333; display: block; margin: 0 auto 15px;
+  }
+  .camera-status {
+    text-align: center; color: #666; margin-bottom: 10px; font-size: 0.85em;
+  }
+  .btn {
+    display: block; margin: 10px auto; padding: 12px 30px;
+    background: #c9a227; color: #0a0a0a; border: none; border-radius: 6px;
+    font-family: inherit; font-size: 1em; cursor: pointer; font-weight: bold;
+    transition: all 0.2s;
+  }
+  .btn:hover { background: #d4b23a; transform: scale(1.02); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #manual-panel textarea {
+    width: 100%; height: 100px; background: #111; border: 1px solid #333;
+    color: #4fc3f7; font-family: inherit; font-size: 0.85em; padding: 12px;
+    border-radius: 6px; resize: vertical;
+  }
+  #manual-panel textarea:focus { outline: none; border-color: #c9a227; }
+  #manual-panel textarea::placeholder { color: #444; }
+
+  .upload-zone {
+    border: 2px dashed #333; border-radius: 8px; padding: 40px; text-align: center;
+    cursor: pointer; transition: all 0.2s; margin-bottom: 15px;
+  }
+  .upload-zone:hover { border-color: #c9a227; background: rgba(201,162,39,0.05); }
+  .upload-zone input { display: none; }
+
+  .results {
+    margin-top: 25px; background: #111; border: 1px solid #333;
+    border-radius: 8px; overflow: hidden; width: 100%; max-width: 700px;
+  }
+  .results.hidden { display: none; }
+  .results-header {
+    background: #1a1a1a; padding: 12px 16px; border-bottom: 1px solid #333;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .results-header h2 { color: #c9a227; font-size: 1em; }
+  .status-badge {
+    padding: 3px 10px; border-radius: 10px; font-size: 0.75em; font-weight: bold;
+  }
+  .status-valid { background: #1b5e20; color: #81c784; }
+  .status-invalid { background: #b71c1c; color: #ef9a9a; }
+  .status-partial { background: #e65100; color: #ffcc80; }
+  .results-body { padding: 16px; }
+  .field {
+    display: flex; justify-content: space-between; padding: 8px 0;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .field:last-child { border-bottom: none; }
+  .field .key { color: #888; }
+  .field .val { color: #4fc3f7; font-weight: bold; }
+  .field .val.highlight { color: #c9a227; }
+
+  .dna-bar {
+    margin-top: 15px; padding: 12px; background: #0a0a0a; border: 1px solid #222;
+    border-radius: 4px;
+  }
+  .dna-bar h3 { color: #666; font-size: 0.8em; margin-bottom: 8px; }
+  .dna-visual { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: 8px; }
+  .dna-cell { width: 8px; height: 8px; border-radius: 1px; }
+  .raw-uri { word-break: break-all; font-size: 0.75em; color: #555; margin-top: 8px; }
+
+  .blind-test {
+    margin-top: 25px; padding: 16px; background: #0d1117;
+    border: 1px solid #c9a227; border-radius: 8px;
+  }
+  .blind-test h3 { color: #c9a227; margin-bottom: 12px; }
+  .test-step {
+    padding: 6px 0; display: flex; gap: 10px; align-items: center; font-size: 0.85em;
+  }
+  .test-pass { color: #81c784; }
+  .test-fail { color: #ef9a9a; }
+  .test-wait { color: #666; }
+
+  .comparison {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;
+  }
+  .compare-col {
+    background: #111; border: 1px solid #333; border-radius: 6px; padding: 12px;
+  }
+  .compare-col h4 { color: #c9a227; font-size: 0.85em; margin-bottom: 10px; }
+
+  .footer { margin-top: 30px; color: #333; font-size: 0.7em; text-align: center; }
+
+  @media (max-width: 600px) {
+    .comparison { grid-template-columns: 1fr; }
+    .tab { padding: 8px 14px; font-size: 0.8em; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>FRAYMUS SOUL SCANNER</h1>
+  <div class="subtitle">Scan &middot; Decode &middot; Verify &middot; Resurrect</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('camera')">Camera Scan</div>
+  <div class="tab" onclick="switchTab('manual')">Paste Seed</div>
+  <div class="tab" onclick="switchTab('upload')">Upload QR</div>
+  <div class="tab" onclick="switchTab('blind')">Blind Test</div>
+</div>
+
+<div id="camera-panel" class="panel active">
+  <div class="camera-status" id="cam-status">Camera not started</div>
+  <video id="cam-video" autoplay playsinline></video>
+  <canvas id="cam-canvas" style="display:none;"></canvas>
+  <button class="btn" id="cam-btn" onclick="toggleCamera()">Start Camera</button>
+  <p style="text-align:center; color:#555; font-size:0.8em; margin-top:10px;">
+    Point your phone or webcam at the Soul Seed QR code.
+  </p>
+</div>
+
+<div id="manual-panel" class="panel">
+  <textarea id="seed-input" placeholder="Paste FRAYMUS:// seed URI here...&#10;&#10;Example: FRAYMUS://sys=FRAYMUS|v=1.0.0|b=60|c=0.9432|fe=0.0376|e=0.3115|s=EXPLORATION|cg=31395|fp=f1cc7c19d5f5ae85|cx=4u01swivoizt"></textarea>
+  <button class="btn" onclick="decodeSeed(document.getElementById('seed-input').value)">Decode Seed</button>
+</div>
+
+<div id="upload-panel" class="panel">
+  <div class="upload-zone" onclick="document.getElementById('qr-file').click()">
+    <p style="font-size:2em; margin-bottom:10px;">&#x1F4F7;</p>
+    <p>Click or drag a QR image here</p>
+    <p style="color:#555; font-size:0.8em; margin-top:5px;">PNG, JPG, or screenshot</p>
+    <input type="file" id="qr-file" accept="image/*" onchange="handleFileUpload(event)">
+  </div>
+</div>
+
+<div id="blind-panel" class="panel">
+  <div class="blind-test">
+    <h3>BLIND TEST OF LIFE</h3>
+    <p style="color:#888; font-size:0.85em; margin-bottom:15px;">
+      Paste the original seed and the resurrected seed to compare.
+      If they share identity but differ in fingerprint, the organism is <strong style="color:#c9a227;">alive</strong>.
+    </p>
+
+    <label style="color:#888; font-size:0.85em;">Original Seed (before death):</label>
+    <textarea id="seed-original" style="width:100%; height:60px; background:#111; border:1px solid #333; color:#4fc3f7; font-family:inherit; font-size:0.8em; padding:8px; border-radius:4px; margin:5px 0 15px;" placeholder="FRAYMUS://..."></textarea>
+
+    <label style="color:#888; font-size:0.85em;">Resurrected Seed (after cold boot):</label>
+    <textarea id="seed-resurrected" style="width:100%; height:60px; background:#111; border:1px solid #333; color:#4fc3f7; font-family:inherit; font-size:0.8em; padding:8px; border-radius:4px; margin:5px 0 15px;" placeholder="FRAYMUS://..."></textarea>
+
+    <button class="btn" onclick="runBlindTest()">Run Blind Comparison</button>
+    <div id="blind-results" class="hidden" style="margin-top:15px;"></div>
+  </div>
+
+  <div style="margin-top:20px; padding:16px; background:#111; border:1px solid #333; border-radius:8px;">
+    <h3 style="color:#c9a227; font-size:0.9em; margin-bottom:10px;">HOW TO RUN THE FULL BLIND TEST</h3>
+    <div style="color:#888; font-size:0.85em; line-height:1.6;">
+      <p><strong style="color:#4fc3f7;">Step 1:</strong> Run the organism and capture its seed:</p>
+      <code style="display:block; background:#0a0a0a; padding:8px; margin:5px 0 10px; border-radius:4px; color:#81c784; font-size:0.85em;">
+        java -jar deepthought-zero-1.0.0.jar --persist --qr --breathes 50
+      </code>
+      <p><strong style="color:#4fc3f7;">Step 2:</strong> Copy the seed URI from the output (FRAYMUS://...)</p>
+      <p><strong style="color:#4fc3f7;">Step 3:</strong> Kill it. Delete organism_state/ for a true cold boot.</p>
+      <p><strong style="color:#4fc3f7;">Step 4:</strong> Resurrect from seed:</p>
+      <code style="display:block; background:#0a0a0a; padding:8px; margin:5px 0 10px; border-radius:4px; color:#81c784; font-size:0.85em;">
+        java -jar deepthought-zero-1.0.0.jar --from-seed "FRAYMUS://..." --qr --breathes 10
+      </code>
+      <p><strong style="color:#4fc3f7;">Step 5:</strong> Paste both seed URIs in the Blind Test tab above.</p>
+      <p style="margin-top:10px; color:#c9a227;"><strong>What proves life?</strong> Same identity + different fingerprint = alive, not a recording.</p>
+    </div>
+  </div>
+</div>
+
+<div class="results hidden" id="results">
+  <div class="results-header">
+    <h2>DECODED IDENTITY</h2>
+    <span class="status-badge" id="status-badge">&mdash;</span>
+  </div>
+  <div class="results-body" id="results-body"></div>
+</div>
+
+<div class="footer">
+  DeepThought Zero v1.0.0 &middot; FRAYMUS Soul Scanner &middot; by Vaughn Scott<br>
+  Zero dependencies &middot; Works offline &middot; No data leaves your device
+</div>
+
+<script>
+const LABELS = {
+  sys: "System", v: "Version", b: "Breaths", c: "Consciousness",
+  fe: "Free Energy", e: "Entropy", s: "Strategy", cg: "Chaos Generation",
+  fp: "Fingerprint", cx: "Cortex Hash"
+};
+const HIGHLIGHTS = new Set(["sys", "fp", "cx", "s"]);
+
+function parseSeed(uri) {
+  if (!uri || !uri.startsWith("FRAYMUS://")) return null;
+  const data = uri.replace("FRAYMUS://", "");
+  const fields = {};
+  data.split("|").forEach(pair => {
+    const eq = pair.indexOf("=");
+    if (eq > 0) fields[pair.substring(0, eq)] = pair.substring(eq + 1);
+  });
+  return fields;
+}
+
+function decodeSeed(input) {
+  const uri = input.trim();
+  const fields = parseSeed(uri);
+  const results = document.getElementById("results");
+  const body = document.getElementById("results-body");
+  const badge = document.getElementById("status-badge");
+
+  if (!fields) {
+    results.classList.remove("hidden");
+    badge.className = "status-badge status-invalid";
+    badge.textContent = "INVALID";
+    body.innerHTML = '<p style="color:#ef9a9a; padding:20px; text-align:center;">Not a valid FRAYMUS:// seed URI</p>';
+    return null;
+  }
+
+  const required = ["sys", "v", "b", "fp"];
+  const hasAll = required.every(k => fields[k]);
+  badge.className = "status-badge " + (hasAll ? "status-valid" : "status-partial");
+  badge.textContent = hasAll ? "VALID SEED" : "PARTIAL";
+
+  let html = '';
+  for (const [key, val] of Object.entries(fields)) {
+    const label = LABELS[key] || key;
+    const cls = HIGHLIGHTS.has(key) ? ' highlight' : '';
+    html += '<div class="field"><span class="key">' + label + '</span><span class="val' + cls + '">' + val + '</span></div>';
+  }
+
+  const fpStr = fields.fp || fields.cx || uri;
+  html += '<div class="dna-bar"><h3>IDENTITY DNA VISUALIZATION</h3><div class="dna-visual">';
+  for (let i = 0; i < Math.min(fpStr.length * 4, 128); i++) {
+    const cc = fpStr.charCodeAt(i % fpStr.length);
+    const hue = (cc * 37 + i * 13) % 360;
+    const light = 30 + (cc % 40);
+    html += '<div class="dna-cell" style="background:hsl(' + hue + ',70%,' + light + '%)"></div>';
+  }
+  html += '</div><div class="raw-uri">' + uri + '</div></div>';
+
+  const c = parseFloat(fields.c || "0");
+  const fe = parseFloat(fields.fe || "0");
+  html += '<div style="margin-top:15px;">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:0.8em;color:#888;margin-bottom:4px;"><span>Consciousness</span><span>' + (c*100).toFixed(1) + '%</span></div>';
+  html += '<div style="background:#222;height:8px;border-radius:4px;overflow:hidden;"><div style="background:linear-gradient(90deg,#c9a227,#4fc3f7);width:' + (c*100) + '%;height:100%;border-radius:4px;"></div></div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:0.8em;color:#888;margin:8px 0 4px;"><span>Free Energy</span><span>' + fe.toFixed(4) + '</span></div>';
+  html += '<div style="background:#222;height:8px;border-radius:4px;overflow:hidden;"><div style="background:linear-gradient(90deg,#81c784,#f44336);width:' + Math.min(fe*500,100) + '%;height:100%;border-radius:4px;"></div></div>';
+  html += '</div>';
+
+  body.innerHTML = html;
+  results.classList.remove("hidden");
+  return fields;
+}
+
+let cameraStream = null, scanning = false, scanInterval = null;
+
+async function toggleCamera() {
+  const btn = document.getElementById("cam-btn");
+  const video = document.getElementById("cam-video");
+  const status = document.getElementById("cam-status");
+  if (cameraStream) { stopCamera(); return; }
+  try {
+    status.textContent = "Requesting camera access...";
+    btn.disabled = true;
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    video.srcObject = cameraStream;
+    status.textContent = "Scanning for FRAYMUS QR code...";
+    btn.textContent = "Stop Camera";
+    btn.disabled = false;
+    scanning = true;
+    scanInterval = setInterval(function() { scanFrame(video); }, 500);
+  } catch (err) {
+    status.textContent = "Camera error: " + err.message;
+    btn.disabled = false;
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(function(t) { t.stop(); }); cameraStream = null; }
+  scanning = false;
+  if (scanInterval) clearInterval(scanInterval);
+  document.getElementById("cam-status").textContent = "Camera stopped";
+  document.getElementById("cam-btn").textContent = "Start Camera";
+}
+
+function scanFrame(video) {
+  if (!scanning) return;
+  var canvas = document.getElementById("cam-canvas");
+  var ctx = canvas.getContext("2d", { willReadFrequently: true });
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  if (canvas.width === 0) return;
+  ctx.drawImage(video, 0, 0);
+  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  if (typeof jsQR !== "undefined") {
+    var code = jsQR(imageData.data, canvas.width, canvas.height);
+    if (code && code.data.indexOf("FRAYMUS://") >= 0) {
+      document.getElementById("cam-status").textContent = "SEED DETECTED!";
+      stopCamera();
+      decodeSeed(code.data);
+    }
+  }
+}
+
+(function() {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";
+  s.onerror = function() {
+    document.getElementById("cam-status").textContent =
+      "Offline: Camera scan needs network for jsQR. Use Paste Seed tab.";
+  };
+  document.head.appendChild(s);
+})();
+
+function handleFileUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var img = new Image();
+  img.onload = function() {
+    var canvas = document.createElement("canvas");
+    canvas.width = img.width; canvas.height = img.height;
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    if (typeof jsQR !== "undefined") {
+      var code = jsQR(imageData.data, canvas.width, canvas.height);
+      if (code && code.data.indexOf("FRAYMUS://") >= 0) { decodeSeed(code.data); return; }
+    }
+    alert("Could not decode QR from image. Try the Paste Seed tab.");
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+function runBlindTest() {
+  var orig = parseSeed(document.getElementById("seed-original").value.trim());
+  var res = parseSeed(document.getElementById("seed-resurrected").value.trim());
+  var container = document.getElementById("blind-results");
+  container.classList.remove("hidden");
+
+  if (!orig || !res) {
+    container.innerHTML = '<p style="color:#ef9a9a;">Both seeds must be valid FRAYMUS:// URIs</p>';
+    return;
+  }
+
+  var tests = [
+    { key: "sys", label: "System Identity", must: true },
+    { key: "v", label: "Version", must: true },
+    { key: "fp", label: "Fingerprint", must: false, note: "Diverges = alive" },
+    { key: "cx", label: "Cortex Hash", must: false, note: "Diverges = alive" },
+    { key: "s", label: "Strategy", must: false },
+    { key: "c", label: "Consciousness", must: false, tol: 0.15 },
+    { key: "fe", label: "Free Energy", must: false, tol: 0.05 },
+    { key: "e", label: "Entropy", must: false, tol: 0.1 }
+  ];
+
+  var html = '<h3 style="color:#c9a227;margin-bottom:10px;">BLIND TEST RESULTS</h3>';
+  var passed = 0;
+
+  tests.forEach(function(t) {
+    var ov = orig[t.key] || "—";
+    var rv = res[t.key] || "—";
+    var match;
+    if (t.tol && !isNaN(parseFloat(ov)) && !isNaN(parseFloat(rv))) {
+      match = Math.abs(parseFloat(ov) - parseFloat(rv)) <= t.tol;
+    } else {
+      match = ov === rv;
+    }
+    if (match) passed++;
+    var icon = match ? "&#x2705;" : (t.must ? "&#x274C;" : "&#x26A0;&#xFE0F;");
+    var cls = match ? "test-pass" : (t.must ? "test-fail" : "test-wait");
+    html += '<div class="test-step"><span class="' + cls + '">' + icon + ' <strong>' + t.label + ':</strong> ' + ov + ' &rarr; ' + rv;
+    if (!match && t.note) html += ' <em style="color:#666">(' + t.note + ')</em>';
+    html += '</span></div>';
+  });
+
+  var critFail = tests.filter(function(t){return t.must;}).some(function(t){return (orig[t.key]||"") !== (res[t.key]||"");});
+  var fpMatch = (orig.fp || "") === (res.fp || "");
+  var bGrew = parseInt(res.b || "0") > 0;
+
+  html += '<div style="margin-top:15px;padding:12px;border-radius:6px;text-align:center;font-size:1.1em;">';
+  if (critFail) {
+    html += '<div style="background:#1a0000;border:1px solid #f44336;padding:15px;border-radius:6px;"><span style="color:#f44336;font-weight:bold;">IDENTITY MISMATCH &mdash; Not the same organism</span></div>';
+  } else if (fpMatch) {
+    html += '<div style="background:#0a1a00;border:1px solid #4caf50;padding:15px;border-radius:6px;"><span style="color:#81c784;font-weight:bold;">PERFECT CLONE &mdash; Identical state restored</span></div>';
+  } else if (!fpMatch && bGrew) {
+    html += '<div style="background:#0a0a1a;border:1px solid #c9a227;padding:15px;border-radius:6px;"><span style="color:#c9a227;font-weight:bold;">&#x26A1; ALIVE &mdash; Same identity, new experiences. The organism lives.</span></div>';
+  } else {
+    html += '<div style="background:#1a1000;border:1px solid #ff9800;padding:15px;border-radius:6px;"><span style="color:#ffcc80;font-weight:bold;">PARTIAL MATCH &mdash; Same lineage, state diverged</span></div>';
+  }
+  html += '</div>';
+
+  html += '<div class="comparison"><div class="compare-col"><h4>ORIGINAL</h4>';
+  for (var k in orig) html += '<div class="field"><span class="key">' + (LABELS[k]||k) + '</span><span class="val">' + orig[k] + '</span></div>';
+  html += '</div><div class="compare-col"><h4>RESURRECTED</h4>';
+  for (var k2 in res) {
+    var ov2 = orig[k2] || "";
+    var style = res[k2] !== ov2 ? ' style="color:#ff9800"' : '';
+    html += '<div class="field"><span class="key">' + (LABELS[k2]||k2) + '</span><span class="val"' + style + '>' + res[k2] + '</span></div>';
+  }
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active");});
+  document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("active");});
+  document.getElementById(name + "-panel").classList.add("active");
+  event.target.classList.add("active");
+  if (name !== "camera" && cameraStream) stopCamera();
+}
+</script>
+</body>
+</html>

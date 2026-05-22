@@ -1,0 +1,105 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'application'
+}
+
+application {
+    mainClass = 'io.fraymus.deepthought.organism.Organism'
+}
+
+group = 'io.fraymus'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withJavadocJar()
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Fraynix Engine — the full body (NEXUS, TriMe, Chaos, Signals, Economy, Swarm)
+    implementation project(':Asset-Manager')
+
+    // Testing only
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'DeepThought Zero',
+            'Implementation-Version': version,
+            'Implementation-Vendor': 'Vaughn Scott / FRAYMUS',
+            'Automatic-Module-Name': 'io.fraymus.deepthought'
+        )
+    }
+}
+
+run {
+    standardInput = System.in
+    jvmArgs = ['-Djava.awt.headless=true']
+}
+
+// Run DeepThought + Fraynix standard integration
+task runFraynix(type: JavaExec) {
+    group = 'application'
+    description = 'Run DeepThought Organism with Fraynix body (standard)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.fraymus.deepthought.organism.Organism'
+    args = ['--fraynix', '--genesis', '--lang', '--arena']
+    jvmArgs = ['-Djava.awt.headless=true']
+}
+
+// Run DeepThought + Fraynix FULL ENGINE (all 25+ subsystems)
+task runFraynixFull(type: JavaExec) {
+    group = 'application'
+    description = 'Run DeepThought Organism with full Fraynix engine (all layers)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.fraymus.deepthought.organism.Organism'
+    args = ['--fraynix-full', '--full']
+    jvmArgs = ['-Djava.awt.headless=true']
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            pom {
+                name = 'DeepThought Zero'
+                description = 'Zero-dependency cognitive reasoning library. Self-correcting entropy, Bayesian belief tracking, causal reasoning, meta-learning, and concurrency defense. Pure Java.'
+                url = 'https://github.com/eyeoverthink/deepthought-zero'
+                
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+                
+                developers {
+                    developer {
+                        id = 'vaughnscott'
+                        name = 'Vaughn Scott'
+                        email = 'vaughn@fraymus.io'
+                    }
+                }
+                
+                scm {
+                    connection = 'scm:git:git://github.com/eyeoverthink/deepthought-zero.git'
+                    url = 'https://github.com/eyeoverthink/deepthought-zero'
+                }
+            }
+        }
+    }
+}
